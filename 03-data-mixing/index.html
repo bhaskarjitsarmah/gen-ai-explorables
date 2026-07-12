@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The mixing dial — an explorable</title>
+<style>
+  :root {
+    --bg:#eceef1; --surface:#f8f9fb; --surface-2:#e4e7ec; --border:#d6d9df;
+    --ink:#1b1d22; --ink-dim:#565a63; --ink-faint:#868a93;
+    --domain:#c1892c;      /* amber = domain-specific data */
+    --general:#3b7dc4;     /* blue  = general data */
+    --good:#3f8f4e;        /* green = balanced / optimal */
+    --warn:#c6553c;        /* rust  = forgetting risk */
+    --accent:#3f8f4e;
+    --shadow:0 1px 2px rgba(20,22,28,.05), 0 8px 30px rgba(20,22,28,.07);
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --r:14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#141619; --surface:#1c1f24; --surface-2:#252932; --border:#31353f;
+      --ink:#eceef2; --ink-dim:#a4a8b1; --ink-faint:#6d717b;
+      --domain:#e0b24e; --general:#6ba6e0; --good:#6fc178; --warn:#e2806a; --accent:#6fc178;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#141619; --surface:#1c1f24; --surface-2:#252932; --border:#31353f;
+    --ink:#eceef2; --ink-dim:#a4a8b1; --ink-faint:#6d717b;
+    --domain:#e0b24e; --general:#6ba6e0; --good:#6fc178; --warn:#e2806a; --accent:#6fc178;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.45);
+  }
+  :root[data-theme="light"] {
+    --bg:#eceef1; --surface:#f8f9fb; --surface-2:#e4e7ec; --border:#d6d9df;
+    --ink:#1b1d22; --ink-dim:#565a63; --ink-faint:#868a93;
+    --domain:#c1892c; --general:#3b7dc4; --good:#3f8f4e; --warn:#c6553c; --accent:#3f8f4e;
+    --shadow:0 1px 2px rgba(20,22,28,.05), 0 8px 30px rgba(20,22,28,.07);
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1000px; margin:0 auto; padding:clamp(20px,5vw,56px) clamp(16px,4vw,40px) 72px; }
+
+  header.top { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+  .eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 14px; display:inline-flex; align-items:center; gap:9px; }
+  .eyebrow::before { content:""; width:22px; height:1px; background:var(--accent); opacity:.6; }
+  h1 { font-size:clamp(29px,5vw,48px); line-height:1.03; letter-spacing:-0.02em; font-weight:680; margin:0 0 16px; text-wrap:balance; max-width:18ch; }
+  h1 em { font-style:normal; color:var(--domain); }
+  .lede { font-size:clamp(15.5px,2vw,18px); color:var(--ink-dim); max-width:64ch; margin:0; }
+  .theme-btn { flex:0 0 auto; font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--ink-dim); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; transition:.15s; }
+  .theme-btn:hover { color:var(--ink); border-color:var(--ink-faint); }
+
+  .section-label { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint); margin:38px 0 12px; }
+
+  /* lifecycle strip */
+  .pipe { display:flex; align-items:stretch; gap:6px; flex-wrap:wrap; }
+  .pnode { flex:1 1 120px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; box-shadow:var(--shadow); }
+  .pnode.focus { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface)); }
+  .pnode .pt { font-size:12.5px; font-weight:640; letter-spacing:-0.01em; }
+  .pnode .ps { font-size:11px; color:var(--ink-dim); margin-top:2px; }
+  .pnode.focus .pt { color:var(--accent); }
+  .parrow { align-self:center; color:var(--ink-faint); font-family:var(--mono); font-size:12px; }
+  @media (max-width:640px){ .parrow{ display:none; } }
+
+  /* console */
+  .console { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); box-shadow:var(--shadow); padding:20px 22px 22px; }
+  .chart-wrap { overflow-x:auto; }
+  svg.chart { display:block; width:100%; height:auto; min-width:420px; }
+  .cv-axis { stroke:var(--border); stroke-width:1; }
+  .cv-grid { stroke:var(--border); stroke-width:1; opacity:.5; stroke-dasharray:2 4; }
+  .cv-lab { font-family:var(--mono); font-size:10px; fill:var(--ink-faint); }
+  .cv-curve { fill:none; stroke-width:2.5; }
+  .cv-domain { stroke:var(--domain); } .cv-general { stroke:var(--general); }
+  .cv-dual { stroke:var(--good); stroke-width:2; stroke-dasharray:1 0; }
+  .cv-band { fill:color-mix(in srgb,var(--good) 12%,transparent); }
+  .cv-cmr { stroke:var(--warn); stroke-width:1.2; stroke-dasharray:3 3; opacity:.7; }
+  .cv-cursor { stroke:var(--ink); stroke-width:1.4; opacity:.55; }
+  .cv-dot { stroke:var(--surface); stroke-width:2; }
+  .cmark { cursor:pointer; }
+  .cmark line { stroke:var(--ink-faint); stroke-width:1; }
+  .cmark text { font-family:var(--mono); font-size:9px; fill:var(--ink-faint); }
+  .cmark:hover text, .cmark.sel text { fill:var(--ink); font-weight:700; }
+  .cmark:hover line, .cmark.sel line { stroke:var(--ink); }
+
+  .clegend { display:flex; gap:16px; flex-wrap:wrap; margin:6px 2px 0; }
+  .clegend span { display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--ink-dim); }
+  .clegend i { width:14px; height:3px; border-radius:2px; }
+
+  /* mixing bar + slider */
+  .mixbar { display:flex; height:38px; border-radius:9px; overflow:hidden; border:1px solid var(--border); margin:20px 0 4px; font-family:var(--mono); font-size:12px; font-weight:600; }
+  .mixbar .seg { display:flex; align-items:center; justify-content:center; color:#fff; transition:width .04s linear; white-space:nowrap; overflow:hidden; }
+  .mixbar .mdom { background:var(--domain); }
+  .mixbar .mgen { background:var(--general); }
+  .slider-row { display:flex; align-items:center; gap:14px; margin-top:12px; }
+  .slider-row input[type=range] { flex:1; accent-color:var(--ink); cursor:pointer; height:22px; }
+  .slider-row .pct { font-family:var(--mono); font-size:14px; font-weight:700; color:var(--ink); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .axhint { display:flex; justify-content:space-between; font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); margin-top:2px; }
+
+  /* readouts */
+  .readouts { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:22px; }
+  @media (max-width:620px){ .readouts { grid-template-columns:1fr; } }
+  .meter { background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:13px 15px; }
+  .meter .mlab { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); }
+  .meter .mval { font-family:var(--mono); font-size:26px; font-weight:700; letter-spacing:-0.01em; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .meter .mtrack { height:6px; border-radius:99px; background:var(--border); margin-top:9px; overflow:hidden; }
+  .meter .mfill { height:100%; border-radius:99px; transition:width .08s linear; }
+  .meter.dom .mval { color:var(--domain); } .meter.dom .mfill { background:var(--domain); }
+  .meter.gen .mval { color:var(--general); } .meter.gen .mfill { background:var(--general); }
+  .meter.dual { display:flex; flex-direction:column; }
+  .meter.dual .mval { color:var(--ink); }
+  .verdict { margin-top:auto; padding-top:8px; }
+  .vchip { display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12px; font-weight:700; padding:5px 11px; border-radius:999px; border:1px solid; }
+  .vchip::before { content:""; width:8px; height:8px; border-radius:50%; background:currentColor; }
+  .v-under { color:var(--general); border-color:color-mix(in srgb,var(--general) 40%,transparent); background:color-mix(in srgb,var(--general) 10%,transparent); }
+  .v-bal   { color:var(--good);    border-color:color-mix(in srgb,var(--good) 45%,transparent);    background:color-mix(in srgb,var(--good) 12%,transparent); }
+  .v-forget{ color:var(--warn);    border-color:color-mix(in srgb,var(--warn) 45%,transparent);    background:color-mix(in srgb,var(--warn) 12%,transparent); }
+
+  .note { margin-top:16px; font-size:13.5px; color:var(--ink-dim); border-left:3px solid var(--border); padding:2px 0 2px 13px; }
+  .note b { color:var(--ink); }
+  .note.model { border-left-color:var(--domain); min-height:20px; }
+
+  /* tensions */
+  .tensions { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media (max-width:720px){ .tensions { grid-template-columns:1fr; } }
+  .tcard { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:15px 16px; box-shadow:var(--shadow); }
+  .tcard h3 { margin:0 0 6px; font-size:14.5px; letter-spacing:-0.01em; }
+  .tcard h3 .vs { color:var(--ink-faint); font-weight:500; }
+  .tcard p { margin:0; font-size:13px; color:var(--ink-dim); }
+
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+  .howto { margin-top:34px; font-size:14px; color:var(--ink-dim); max-width:66ch; }
+  .howto b { color:var(--ink); font-weight:620; }
+  footer { margin-top:38px; padding-top:20px; border-top:1px solid var(--border); font-size:12.5px; color:var(--ink-faint); }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:.001ms !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Explorable</p>
+      <h1>How much <em>domain data</em> should you mix in?</h1>
+      <p class="lede">Training a domain-specific LLM means blending specialized data with general data. Too little domain data and you waste the specialty; too much and the model forgets how to be general. Drag the mix and watch the trade-off — then snap to where real finance LLMs sit.</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle color theme">◐ theme</button>
+  </header>
+
+  <!-- lifecycle context -->
+  <p class="section-label">Data mixing is a decision at every stage — this explorable focuses on the core one</p>
+  <div class="pipe">
+    <div class="pnode"><div class="pt">Curate sources</div><div class="ps">Domain + general + synthetic corpora</div></div>
+    <span class="parrow">→</span>
+    <div class="pnode"><div class="pt">Filter &amp; select</div><div class="ps">Quality, dedup, subset selection</div></div>
+    <span class="parrow">→</span>
+    <div class="pnode focus"><div class="pt">Set the ratio</div><div class="ps">Domain vs general proportion</div></div>
+    <span class="parrow">→</span>
+    <div class="pnode"><div class="pt">CPT vs scratch</div><div class="ps">Adapt a base model, or train fresh</div></div>
+    <span class="parrow">→</span>
+    <div class="pnode"><div class="pt">Instruction-tune</div><div class="ps">Task &amp; alignment data mix</div></div>
+    <span class="parrow">→</span>
+    <div class="pnode"><div class="pt">Evaluate</div><div class="ps">Scaling laws, proxy models, ablation</div></div>
+  </div>
+
+  <!-- console -->
+  <p class="section-label">The mixing dial · specialization ⇄ generalization</p>
+  <div class="console">
+    <div class="chart-wrap">
+      <svg class="chart" id="chart" viewBox="0 0 640 300" role="img" aria-label="Trade-off curves between domain expertise and general capability as the domain data fraction changes"></svg>
+    </div>
+    <div class="clegend">
+      <span><i style="background:var(--domain)"></i>Domain expertise</span>
+      <span><i style="background:var(--general)"></i>General capability</span>
+      <span><i style="background:var(--good)"></i>Dual proficiency (balance)</span>
+    </div>
+
+    <div class="mixbar" id="mixbar">
+      <div class="seg mdom" id="segDom">domain</div>
+      <div class="seg mgen" id="segGen">general</div>
+    </div>
+    <div class="slider-row">
+      <input type="range" id="slider" min="0" max="100" value="55" step="1" aria-label="Percent of training data that is domain-specific" />
+      <span class="pct" id="pct">55% domain</span>
+    </div>
+    <div class="axhint"><span>0% domain — all general</span><span>all domain — 100%</span></div>
+
+    <div class="readouts">
+      <div class="meter dom">
+        <div class="mlab">Domain expertise</div>
+        <div class="mval" id="valDom">0</div>
+        <div class="mtrack"><div class="mfill" id="fillDom"></div></div>
+      </div>
+      <div class="meter gen">
+        <div class="mlab">General capability</div>
+        <div class="mval" id="valGen">0</div>
+        <div class="mtrack"><div class="mfill" id="fillGen"></div></div>
+      </div>
+      <div class="meter dual">
+        <div class="mlab">Dual-proficiency score</div>
+        <div class="mval" id="valDual">0</div>
+        <div class="verdict"><span class="vchip" id="verdict">—</span></div>
+      </div>
+    </div>
+
+    <div class="note model" id="modelNote"></div>
+    <div class="note">
+      <b>Read it as a concept, not a law.</b> The paper formalizes this as the <b>Critical Mixture Ratio</b> — the most domain data you can add before general ability degrades sharply. The exact curve shifts with the base model, domain similarity, and tricks like general-data <b>replay</b>, scaling-law <b>annealing</b>, and domain self-constraint — which is how Baichuan4-Finance succeeds at just 20% domain data.
+    </div>
+  </div>
+
+  <!-- tensions -->
+  <p class="section-label">Why it's hard · three tensions the whole field wrestles with</p>
+  <div class="tensions">
+    <div class="tcard"><h3>Specialization <span class="vs">⇄</span> Generalization</h3><p>The dial above. Balance the two through the Critical Mixture Ratio and replay — neither domain-only nor arbitrary mixing wins.</p></div>
+    <div class="tcard"><h3>Quality <span class="vs">·</span> Diversity <span class="vs">·</span> Scale</h3><p>The "impossible triangle." Aggressive quality filtering (Ask-LLM drops 90% of data) speeds convergence but can strip rare, valuable, diverse examples.</p></div>
+    <div class="tcard"><h3>Static <span class="vs">⇄</span> Dynamic</h3><p>Fix the ratio up front (RegMix, scaling laws) or adapt it during training (Online Data Mixing, TiKMiX) as the model's data preferences evolve.</p></div>
+  </div>
+
+  <p class="howto">
+    <b>How to read this.</b> The <b style="color:var(--domain)">amber</b> curve is domain skill, the <b style="color:var(--general)">blue</b> curve is general skill, and the <b style="color:var(--good)">green</b> curve is their balance — it peaks inside the shaded band. Drag the slider, or click a labeled model tick (<b>BloombergGPT</b>, <b>FinLLaMA</b>, <b>Baichuan4-Finance</b>, <b>LLM Pro Finance</b>) to snap the mix to that real system's ratio and read what it did.
+  </p>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- the model: outcomes as a function of domain fraction d in [0,1] ----
+  function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
+  function domainSkill(d){ return 100 * (1 - Math.pow(1 - d, 1.7)); }
+  function generalSkill(d){ return 100 * (1 - 0.9 * Math.pow(clamp((d - 0.45) / 0.55, 0, 1), 1.6)); }
+  function dualScore(d){ var D = domainSkill(d), G = generalSkill(d); return (D + G) > 0 ? (2 * D * G) / (D + G) : 0; }
+
+  var BAND = [0.46, 0.64];   // balanced / dual-proficiency zone; right edge ≈ practical CMR
+
+  // real finance-LLM pretraining ratios from the survey (domain fraction)
+  var MODELS = [
+    { id:"baichuan", d:0.20, label:"Baichuan4-Finance",
+      note:"<b>Baichuan4-Finance — 20:80 finance:general.</b> General-weighted, yet succeeds: scaling-law annealing plus a domain self-constraint strategy lift domain skill without forgetting. Proof the curve isn't fixed." },
+    { id:"bloomberg", d:0.51, label:"BloombergGPT",
+      note:"<b>BloombergGPT — 51:49 finance:general</b> (363B + 345B tokens). Near-parity: beat prior models on financial tasks <em>without</em> sacrificing general benchmarks. The canonical balanced mix." },
+    { id:"llmpro", d:0.55, label:"LLM Pro Finance",
+      note:"<b>LLM Pro Finance — 50%+ finance data.</b> Fine-tuned a generalist instruction model, keeping its general skills while adding finance expertise across English, French, and German." },
+    { id:"finllama", d:0.75, label:"FinLLaMA",
+      note:"<b>FinLLaMA — ~3:1 finance:general.</b> More specialized; continual pretraining on a 52B-token multimodal financial corpus, leaning hard toward the domain." }
+  ];
+
+  // ---- chart geometry ----
+  var VB = { w:640, h:300, l:44, r:16, t:16, b:40 };
+  var PW = VB.w - VB.l - VB.r, PH = VB.h - VB.t - VB.b;
+  function X(d){ return VB.l + d * PW; }
+  function Y(v){ return (VB.t + PH) - (v / 100) * PH; }
+
+  function curvePts(fn){
+    var s = [];
+    for (var i = 0; i <= 50; i++){ var d = i / 50; s.push(X(d).toFixed(1) + "," + Y(fn(d)).toFixed(1)); }
+    return s.join(" ");
+  }
+
+  var svg = document.getElementById("chart");
+  var NS = "http://www.w3.org/2000/svg";
+  function el(name, attrs){ var e = document.createElementNS(NS, name); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  // band
+  svg.appendChild(el("rect", { class:"cv-band", x:X(BAND[0]), y:VB.t, width:X(BAND[1]) - X(BAND[0]), height:PH }));
+  // gridlines + y labels
+  [0,25,50,75,100].forEach(function (v){
+    svg.appendChild(el("line", { class:"cv-grid", x1:VB.l, y1:Y(v), x2:VB.l + PW, y2:Y(v) }));
+    var t = el("text", { class:"cv-lab", x:VB.l - 8, y:Y(v) + 3, "text-anchor":"end" }); t.textContent = v; svg.appendChild(t);
+  });
+  // x axis + labels
+  svg.appendChild(el("line", { class:"cv-axis", x1:VB.l, y1:Y(0), x2:VB.l + PW, y2:Y(0) }));
+  [0,25,50,75,100].forEach(function (p){
+    var t = el("text", { class:"cv-lab", x:X(p/100), y:VB.t + PH + 15, "text-anchor":"middle" }); t.textContent = p + "%"; svg.appendChild(t);
+  });
+  var axTitle = el("text", { class:"cv-lab", x:VB.l + PW/2, y:VB.h - 2, "text-anchor":"middle" });
+  axTitle.textContent = "share of training data that is domain-specific"; svg.appendChild(axTitle);
+  // CMR line
+  svg.appendChild(el("line", { class:"cv-cmr", x1:X(BAND[1]), y1:VB.t, x2:X(BAND[1]), y2:VB.t + PH }));
+  var cmrLab = el("text", { class:"cv-lab", x:X(BAND[1]) + 4, y:VB.t + 10 }); cmrLab.textContent = "CMR"; cmrLab.setAttribute("fill", "var(--warn)"); svg.appendChild(cmrLab);
+  // curves
+  svg.appendChild(el("polyline", { class:"cv-curve cv-general", points:curvePts(generalSkill) }));
+  svg.appendChild(el("polyline", { class:"cv-curve cv-domain",  points:curvePts(domainSkill) }));
+  svg.appendChild(el("polyline", { class:"cv-curve cv-dual",    points:curvePts(dualScore) }));
+  // cursor + dots (updated live)
+  var cursor = el("line", { class:"cv-cursor", x1:X(0.55), y1:VB.t, x2:X(0.55), y2:VB.t + PH }); svg.appendChild(cursor);
+  var dotDom = el("circle", { class:"cv-dot", r:5, fill:"var(--domain)" });
+  var dotGen = el("circle", { class:"cv-dot", r:5, fill:"var(--general)" });
+  var dotDual = el("circle", { class:"cv-dot", r:4, fill:"var(--good)" });
+  svg.appendChild(dotDom); svg.appendChild(dotGen); svg.appendChild(dotDual);
+
+  // model ticks
+  MODELS.forEach(function (m){
+    var g = el("g", { class:"cmark" }); g.setAttribute("data-id", m.id);
+    g.appendChild(el("line", { x1:X(m.d), y1:VB.t + PH, x2:X(m.d), y2:VB.t + PH + 6 }));
+    var t = el("text", { x:X(m.d), y:VB.t + PH + 28, "text-anchor":"middle" });
+    // stagger labels so they don't collide
+    t.textContent = m.label.replace("Baichuan4-Finance","Baichuan").replace("LLM Pro Finance","LLM Pro").replace("BloombergGPT","Bloomberg");
+    g.appendChild(t);
+    g.addEventListener("click", function () { setD(m.d, m.id); });
+    svg.appendChild(g);
+  });
+
+  // ---- elements ----
+  var slider = document.getElementById("slider"), pct = document.getElementById("pct");
+  var segDom = document.getElementById("segDom"), segGen = document.getElementById("segGen");
+  var valDom = document.getElementById("valDom"), valGen = document.getElementById("valGen"), valDual = document.getElementById("valDual");
+  var fillDom = document.getElementById("fillDom"), fillGen = document.getElementById("fillGen");
+  var verdict = document.getElementById("verdict"), modelNote = document.getElementById("modelNote");
+
+  function render(d){
+    var D = domainSkill(d), G = generalSkill(d), Du = dualScore(d);
+    // mixbar
+    segDom.style.width = (d * 100) + "%"; segGen.style.width = ((1 - d) * 100) + "%";
+    segDom.textContent = d >= 0.12 ? Math.round(d * 100) + "% domain" : "";
+    segGen.textContent = (1 - d) >= 0.12 ? Math.round((1 - d) * 100) + "% general" : "";
+    pct.textContent = Math.round(d * 100) + "% domain";
+    // meters
+    valDom.textContent = Math.round(D); valGen.textContent = Math.round(G); valDual.textContent = Math.round(Du);
+    fillDom.style.width = D + "%"; fillGen.style.width = G + "%";
+    // chart cursor + dots
+    cursor.setAttribute("x1", X(d)); cursor.setAttribute("x2", X(d));
+    dotDom.setAttribute("cx", X(d)); dotDom.setAttribute("cy", Y(D));
+    dotGen.setAttribute("cx", X(d)); dotGen.setAttribute("cy", Y(G));
+    dotDual.setAttribute("cx", X(d)); dotDual.setAttribute("cy", Y(Du));
+    // verdict
+    if (d < BAND[0]) { verdict.className = "vchip v-under"; verdict.textContent = "Domain data underutilized"; }
+    else if (d <= BAND[1]) { verdict.className = "vchip v-bal"; verdict.textContent = "Balanced — dual proficiency"; }
+    else { verdict.className = "vchip v-forget"; verdict.textContent = "Catastrophic-forgetting risk"; }
+  }
+
+  function setD(d, modelId){
+    slider.value = Math.round(d * 100);
+    render(d);
+    document.querySelectorAll(".cmark").forEach(function (g){ g.classList.toggle("sel", g.getAttribute("data-id") === modelId); });
+    var m = modelId ? MODELS.filter(function (x){ return x.id === modelId; })[0] : null;
+    modelNote.innerHTML = m ? m.note : "";
+  }
+
+  slider.addEventListener("input", function (){
+    var d = parseInt(slider.value, 10) / 100;
+    render(d);
+    document.querySelectorAll(".cmark").forEach(function (g){ g.classList.remove("sel"); });
+    modelNote.innerHTML = "";
+  });
+
+  document.getElementById("themeBtn").addEventListener("click", function (){
+    var root = document.documentElement;
+    var isDark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    root.setAttribute("data-theme", isDark ? "light" : "dark");
+  });
+
+  document.getElementById("footer").innerHTML = "An explorable of the central trade-off in <em>Data Mixing Strategies for Domain-Specific LLMs</em> (a 95-paper survey). The response curves are an illustrative model of the Critical Mixture Ratio concept; the labeled ratios (BloombergGPT, FinLLaMA, Baichuan4-Finance, LLM Pro Finance) are reproduced from the source. Self-contained — nothing loaded from the network.";
+
+  setD(0.55, "llmpro");  // open near BloombergGPT / balanced
+})();
+</script>
+</body>
+</html>

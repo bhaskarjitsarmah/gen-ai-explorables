@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Keeping humans in the loop — an explorable</title>
+<style>
+  :root {
+    --bg:#eef0ee; --surface:#f8f9f8; --surface-2:#e7e9e6; --border:#d8dad5;
+    --ink:#1f1e1a; --ink-dim:#5a5850; --ink-faint:#8a887e;
+    --accent:#c6537a;                 /* rose = the human */
+    --fb:#3b7dc4; --ov:#bf8a2c; --ap:#3f8f4e; --ref:#7c5cc4; --co:#1c8a86;
+    --shadow:0 1px 2px rgba(25,22,15,.05), 0 8px 30px rgba(25,22,15,.06);
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --r:14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#16171c; --surface:#1e2027; --surface-2:#262932; --border:#31343f;
+      --ink:#ecedf2; --ink-dim:#a6a8b1; --ink-faint:#6f717c;
+      --accent:#e27a9e;
+      --fb:#6ba6e0; --ov:#e0b24e; --ap:#6fc178; --ref:#a78be0; --co:#4fc3be;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#16171c; --surface:#1e2027; --surface-2:#262932; --border:#31343f;
+    --ink:#ecedf2; --ink-dim:#a6a8b1; --ink-faint:#6f717c; --accent:#e27a9e;
+    --fb:#6ba6e0; --ov:#e0b24e; --ap:#6fc178; --ref:#a78be0; --co:#4fc3be;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.45);
+  }
+  :root[data-theme="light"] {
+    --bg:#eef0ee; --surface:#f8f9f8; --surface-2:#e7e9e6; --border:#d8dad5;
+    --ink:#1f1e1a; --ink-dim:#5a5850; --ink-faint:#8a887e; --accent:#c6537a;
+    --fb:#3b7dc4; --ov:#bf8a2c; --ap:#3f8f4e; --ref:#7c5cc4; --co:#1c8a86;
+    --shadow:0 1px 2px rgba(25,22,15,.05), 0 8px 30px rgba(25,22,15,.06);
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1120px; margin:0 auto; padding:clamp(20px,5vw,56px) clamp(16px,4vw,40px) 72px; }
+
+  header.top { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+  .eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 14px; display:inline-flex; align-items:center; gap:9px; }
+  .eyebrow::before { content:""; width:22px; height:1px; background:var(--accent); opacity:.6; }
+  h1 { font-size:clamp(29px,5vw,48px); line-height:1.03; letter-spacing:-0.02em; font-weight:680; margin:0 0 16px; text-wrap:balance; max-width:17ch; }
+  h1 em { font-style:normal; color:var(--accent); }
+  .lede { font-size:clamp(15.5px,2vw,18px); color:var(--ink-dim); max-width:64ch; margin:0; }
+  .theme-btn { flex:0 0 auto; font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--ink-dim); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; transition:.15s; }
+  .theme-btn:hover { color:var(--ink); border-color:var(--ink-faint); }
+
+  .axes { display:flex; gap:14px; flex-wrap:wrap; margin-top:26px; }
+  .axis { flex:1 1 260px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow); }
+  .axis h3 { margin:0 0 4px; font-size:13px; font-family:var(--mono); letter-spacing:.04em; color:var(--ink); text-transform:uppercase; }
+  .axis p { margin:0; font-size:13.5px; color:var(--ink-dim); }
+  .axis .k { color:var(--accent); font-weight:600; }
+
+  /* ---- Autonomy spectrum ---- */
+  .section-label { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint); margin:40px 0 12px; }
+  .spectrum { position:relative; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); padding:20px 22px 16px; }
+  .spectrum-bar { position:relative; height:12px; border-radius:999px; background:linear-gradient(90deg, color-mix(in srgb,var(--co) 55%,transparent), color-mix(in srgb,var(--ov) 55%,transparent) 55%, color-mix(in srgb,var(--accent) 70%,transparent)); margin:26px 0 4px; }
+  .zones { display:flex; justify-content:space-between; font-family:var(--mono); font-size:10.5px; letter-spacing:.02em; color:var(--ink-faint); margin-top:8px; }
+  .zones span { flex:1; text-align:center; }
+  .zones span:first-child { text-align:left; } .zones span:last-child { text-align:right; }
+  .spectrum-ends { display:flex; justify-content:space-between; font-size:12px; color:var(--ink-dim); margin-bottom:2px; }
+  .spectrum-ends b { color:var(--ink); font-weight:600; }
+  .marker { position:absolute; top:-9px; transform:translateX(-50%); width:auto; }
+  .marker button { font-family:var(--mono); font-size:10.5px; color:var(--ink); background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:3px 9px; cursor:pointer; white-space:nowrap; transition:.15s; }
+  .marker button:hover, .marker button.sel { border-color:var(--accent); color:var(--accent); }
+  .marker::after { content:""; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); width:2px; height:8px; background:var(--border); }
+
+  /* ---- Filter legend ---- */
+  .filters { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin:14px 0 6px; }
+  .fchip { font-family:var(--mono); font-size:12px; font-weight:600; color:var(--ink-dim); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 13px 6px 11px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:.15s; }
+  .fchip i { width:10px; height:10px; border-radius:3px; }
+  .fchip:hover { border-color:var(--ink-faint); }
+  .fchip.active { color:var(--ink); border-color:currentColor; }
+  .fchip[data-fam="fb"].active { color:var(--fb); } .fchip[data-fam="ov"].active { color:var(--ov); }
+  .fchip[data-fam="ap"].active { color:var(--ap); } .fchip[data-fam="ref"].active { color:var(--ref); }
+  .fchip[data-fam="co"].active { color:var(--co); }
+  .fcount { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--ink-faint); }
+  .fcount b { color:var(--ink); font-variant-numeric:tabular-nums; }
+
+  /* ---- Explorer ---- */
+  .explorer { display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start; margin-top:14px; }
+  @media (max-width:900px){ .explorer { grid-template-columns:1fr; } }
+
+  .board { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  @media (max-width:620px){ .board { grid-template-columns:1fr; } }
+  .col { background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; }
+  .col > header { padding:13px 15px 11px; border-bottom:1px solid var(--border); }
+  .col h2 { margin:0; font-size:14px; letter-spacing:-0.01em; font-weight:640; display:flex; align-items:center; gap:8px; }
+  .col h2 .n { font-family:var(--mono); font-size:11px; color:var(--ink-faint); font-weight:500; margin-left:auto; }
+  .col .phase-desc { margin:5px 0 0; font-size:12px; color:var(--ink-dim); }
+  .col-body { padding:10px; display:flex; flex-direction:column; gap:8px; }
+
+  .chip { text-align:left; font-family:var(--sans); font-size:13px; line-height:1.3; color:var(--ink); background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--cc); border-radius:9px; padding:9px 11px; cursor:pointer; transition:transform .05s, border-color .15s, opacity .2s, background .15s; }
+  .chip[data-fam="fb"]{ --cc:var(--fb); } .chip[data-fam="ov"]{ --cc:var(--ov); } .chip[data-fam="ap"]{ --cc:var(--ap); }
+  .chip[data-fam="ref"]{ --cc:var(--ref); } .chip[data-fam="co"]{ --cc:var(--co); }
+  .chip:hover { border-color:var(--cc); border-left-color:var(--cc); }
+  .chip:active { transform:translateY(1px); }
+  .chip .cname { font-weight:600; display:block; }
+  .chip .cstat { font-family:var(--mono); font-size:11px; color:var(--cc); margin-top:3px; display:inline-block; }
+  .chip.dim { opacity:.24; filter:grayscale(.5); }
+  .chip.sel { border-color:var(--accent); border-left-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface-2)); box-shadow:0 0 0 1px var(--accent); }
+
+  /* ---- Detail panel ---- */
+  .detail { position:sticky; top:18px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); padding:20px 22px; min-height:320px; }
+  @media (max-width:900px){ .detail { position:static; } }
+  .detail .d-fam { font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+  .detail h2 { font-size:21px; line-height:1.15; letter-spacing:-0.01em; margin:6px 0 12px; font-weight:660; text-wrap:balance; }
+  .d-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .d-tag { font-family:var(--mono); font-size:10.5px; letter-spacing:.03em; color:var(--ink-dim); background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:3px 9px; }
+  .d-block { margin:0 0 13px; }
+  .d-block .lab { font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); display:block; margin-bottom:3px; }
+  .d-block p { margin:0; font-size:14px; color:var(--ink-dim); }
+  .d-stat { border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 8%,transparent); border-radius:10px; padding:12px 14px; margin:0 0 13px; }
+  .d-stat .num { font-family:var(--mono); font-size:22px; font-weight:700; color:var(--accent); letter-spacing:-0.01em; }
+  .d-stat .cap { font-size:12px; color:var(--ink-dim); margin-top:2px; }
+  .d-ref { border-top:1px solid var(--border); padding-top:12px; font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); }
+  .d-ref b { color:var(--ink-dim); }
+
+  .d-empty p.hint { font-size:14px; color:var(--ink-dim); margin:0 0 16px; }
+  .concept { border:1px solid var(--border); border-radius:10px; padding:11px 13px; margin-bottom:9px; background:var(--surface-2); }
+  .concept h4 { margin:0 0 3px; font-size:12.5px; font-family:var(--mono); color:var(--ink); }
+  .concept p { margin:0; font-size:12.5px; color:var(--ink-dim); }
+
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+
+  .howto { margin-top:34px; font-size:14px; color:var(--ink-dim); max-width:66ch; }
+  .howto b { color:var(--ink); font-weight:620; }
+  footer { margin-top:38px; padding-top:20px; border-top:1px solid var(--border); font-size:12.5px; color:var(--ink-faint); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:.001ms !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Explorable</p>
+      <h1>Keeping <em>humans in the loop</em> of LLM agents</h1>
+      <p class="lede">A map of 23 human-in-the-loop strategies for LLM agents — from quick preference clicks to full approval gates and drift-triggered oversight. Filter by family, walk the agent lifecycle, and see the evidence behind each one.</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle color theme">◐ theme</button>
+  </header>
+
+  <div class="axes">
+    <div class="axis">
+      <h3>Two questions, every strategy</h3>
+      <p>Each one answers <span class="k">which kind</span> of human involvement, and <span class="k">when</span> in the agent's life it happens.</p>
+    </div>
+    <div class="axis">
+      <h3>The "when" axis → columns</h3>
+      <p>Strategies apply at <span class="k">design time</span>, <span class="k">runtime</span>, or <span class="k">post-deployment</span>. Many span more than one.</p>
+    </div>
+    <div class="axis">
+      <h3>The "how much" axis → spectrum</h3>
+      <p>Involvement ranges from <span class="k">approving every step</span> to merely <span class="k">watching for drift</span>. That's the strip below.</p>
+    </div>
+  </div>
+
+  <!-- Autonomy spectrum -->
+  <p class="section-label">How much human control · the oversight spectrum</p>
+  <div class="spectrum">
+    <div class="spectrum-ends"><span><b>Agent decides</b> — you set it up once</span><span><b>You decide</b> — sign off each step</span></div>
+    <div class="spectrum-bar" id="specBar">
+      <div class="marker" style="left:16%"><button data-id="onloop">Human-on-the-loop</button></div>
+      <div class="marker" style="left:34%"><button data-id="apollo">Async intervention</button></div>
+      <div class="marker" style="left:57%"><button data-id="trust">Trust-score trigger</button></div>
+      <div class="marker" style="left:75%"><button data-id="hitlap">Risk checkpoints</button></div>
+      <div class="marker" style="left:92%"><button data-id="hula">Approval gates</button></div>
+    </div>
+    <div class="zones">
+      <span>Fully autonomous</span><span>Watch for drift</span><span>Trigger on low trust</span><span>Gate high-risk steps</span><span>Approve everything</span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <p class="section-label">Filter by strategy family</p>
+  <div class="filters" id="filters">
+    <button class="fchip" data-fam="fb"><i style="background:var(--fb)"></i>Feedback</button>
+    <button class="fchip" data-fam="ov"><i style="background:var(--ov)"></i>Oversight &amp; trust</button>
+    <button class="fchip" data-fam="ap"><i style="background:var(--ap)"></i>Approval &amp; correction</button>
+    <button class="fchip" data-fam="ref"><i style="background:var(--ref)"></i>Iterative refinement</button>
+    <button class="fchip" data-fam="co"><i style="background:var(--co)"></i>Collaboration &amp; debate</button>
+    <span class="fcount" id="fcount"><b>23</b> strategies shown</span>
+  </div>
+
+  <!-- Explorer -->
+  <div class="explorer">
+    <div class="board">
+      <div class="col">
+        <header><h2>Design-time <span class="n" id="n-design">0</span></h2><p class="phase-desc">Baked in before the agent ships — how it's built, taught, and made overridable.</p></header>
+        <div class="col-body" id="col-design"></div>
+      </div>
+      <div class="col">
+        <header><h2>Runtime <span class="n" id="n-runtime">0</span></h2><p class="phase-desc">While the agent is working on a live task — where a human can steer, gate, or correct.</p></header>
+        <div class="col-body" id="col-runtime"></div>
+      </div>
+      <div class="col">
+        <header><h2>Post-deployment <span class="n" id="n-post">0</span></h2><p class="phase-desc">After the fact — aggregating signal to improve the whole system over time.</p></header>
+        <div class="col-body" id="col-post"></div>
+      </div>
+    </div>
+
+    <aside class="detail" id="detail" aria-live="polite"></aside>
+  </div>
+
+  <p class="howto">
+    <b>How to read this.</b> Every card is one strategy, colored by its <b>family</b> and placed under each <b>lifecycle phase</b> it applies to — so a card can appear in more than one column. Click any card for its mechanism, benefit, and the <b>evidence</b> from the source paper. The strip above orders the oversight strategies by how much control the human keeps. Click a family to isolate it.
+  </p>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FAMS = {
+    fb:  { name:"Feedback",                 short:"Feedback" },
+    ov:  { name:"Oversight & trust",        short:"Oversight" },
+    ap:  { name:"Approval & correction",    short:"Approval" },
+    ref: { name:"Iterative refinement",     short:"Refinement" },
+    co:  { name:"Collaboration & debate",   short:"Collaboration" }
+  };
+  var TIMING_LABEL = { design:"Design-time", runtime:"Runtime", post:"Post-deployment" };
+
+  // 23 strategies drawn straight from the survey. stat = the headline evidence, if any.
+  var DATA = [
+    { id:"pairwise", fam:"fb", t:["runtime","post"], name:"Pairwise preference feedback",
+      mech:"Surface two candidate responses; the human picks the better one.",
+      benefit:"Drives reward modeling and reranking.", ref:1, refT:"Agent-in-the-Loop data flywheel (2025)" },
+    { id:"nl", fam:"fb", t:["runtime","post"], name:"Natural-language feedback",
+      mech:"Humans write or speak corrective comments on the agent's outputs.",
+      benefit:"Richer than a scalar rating; works both instance- and system-level.", ref:2, refT:"System-Level NL Feedback (Yuan et al., 2023)" },
+    { id:"edit", fam:"fb", t:["runtime"], name:"Edit-based feedback",
+      mech:"Users edit the output directly; the edits become an implicit preference signal.",
+      benefit:"PRELUDE/CIPHER infer latent preferences from edit history, cutting future edit cost.", ref:3, refT:"Learning Latent Preference from User Edits (2024)" },
+    { id:"process", fam:"fb", t:["design"], name:"Process feedback",
+      mech:"Humans annotate individual reasoning steps inside a finite-state machine.",
+      benefit:"AMOR adapts open-source LLMs to new domains with module-level supervision — no full retrain.", ref:4, refT:"AMOR (Guan et al., 2024)" },
+    { id:"relevance", fam:"fb", t:["runtime"], name:"Knowledge-relevance checks",
+      mech:"The agent flags retrieved passages; humans mark them relevant vs. irrelevant.",
+      benefit:"Sharpens retrieval precision in production.", stat:"+14.8%", statCap:"precision@8 in production", ref:1, refT:"Agent-in-the-Loop (2025)" },
+
+    { id:"trust", fam:"ov", t:["runtime"], auto:1, name:"Trust-score triggering",
+      mech:"A live agent trust score triggers a human review only when it drops below a threshold.",
+      benefit:"Avoids blanket review while still catching high-risk actions.", ref:5, refT:"LLM Agent Trust Score (Sheriff)" },
+    { id:"onloop", fam:"ov", t:["runtime"], auto:1, name:"Human-on-the-loop (CAMA)",
+      mech:"Specialists set drift thresholds up front; the agent runs autonomously until a drift signal triggers review.",
+      benefit:"Autonomy with a safety net, instead of synchronous approval.", ref:6, refT:"Human-on-the-loop continual learning (2025)" },
+    { id:"oversightlayer", fam:"ov", t:["runtime"], name:"Dedicated oversight layer",
+      mech:"A separate layer monitors agent actions and detects hallucinations, adding intervention points without halting operations.",
+      benefit:"Catches failures mid-pipeline in multi-agent settings.", ref:7, refT:"HMCF multi-robot framework (Li et al.)" },
+    { id:"hitlap", fam:"ov", t:["runtime"], auto:1, name:"Risk checkpoints vs. monitoring (HITL-AP)",
+      mech:"Checkpoint-style gates for high-stakes decisions; passive monitoring for routine steps.",
+      benefit:"Right-sizes oversight to the risk of each step.", ref:8, refT:"Trustworthy Agentic AI Pipelines (Mishra)" },
+    { id:"override", fam:"ov", t:["design"], name:"Conservative override design",
+      mech:"Architect every component so a human can override it without cascading failure — via access controls and rollback.",
+      benefit:"Safety by construction, not as an afterthought.", ref:9, refT:"Agentic AI & Autonomous Decision-Making (Adedokun)" },
+
+    { id:"hula", fam:"ap", t:["runtime"], auto:1, name:"Approval gates (HULA)",
+      mech:"Explicit sign-off gates at two stages — coding-plan generation and source-code generation.",
+      benefit:"Lets engineers redirect the agent before expensive downstream work runs.", ref:10, refT:"HITL Software Development Agents (2024)" },
+    { id:"llmastar", fam:"ap", t:["runtime"], name:"Interactive planning (LLM A*)",
+      mech:"Human feedback on intermediate path plans is fed back to the LLM through structured prompts.",
+      benefit:"Keeps the planning process transparent and correctable at each step.", ref:12, refT:"LLM A* (Xiao et al., 2023)" },
+    { id:"robotplan", fam:"ap", t:["runtime"], name:"Real-time planning oversight",
+      mech:"A human oversees the plan as it converges, in robotic task planning.",
+      benefit:"Fewer LLM calls to converge — a small Llama 3.1 matched GPT-4 on task-planning quality.", stat:"Llama 3.1 ≈ GPT-4", statCap:"on task planning, with oversight", ref:13, refT:"HITL Robot Task Planning (2025)" },
+    { id:"apollo", fam:"ap", t:["runtime"], auto:1, name:"Asynchronous intervention (Apollo)",
+      mech:"Annotators step in only when the agent drifts from a promising trajectory — give strategic advice, then step back.",
+      benefit:"Sustained 30+ hrs of interaction at low cost.", stat:"+50%", statCap:"over baseline (+28% over no-interaction)", ref:14, refT:"Interaction as Intelligence II (2025)" },
+
+    { id:"semiauto", fam:"ref", t:["design"], name:"Semi-automated prompt generation",
+      mech:"An LLM proposes candidate prompts; a human selects or edits the best; evaluation re-runs.",
+      benefit:"One combined iteration beat purely automated prompt generation.", stat:"+139%", statCap:"vs. automated-only, in travel planning", ref:15, refT:"Smart Language Agents (2024)" },
+    { id:"machineteach", fam:"ref", t:["design","post"], name:"Machine teaching (selective annotation)",
+      mech:"Deployment traces flag high-uncertainty examples; humans correct only those likely mislabeled.",
+      benefit:"Reached near-oracle performance without labeling the full dataset.", stat:"20–70%", statCap:"of data needs human supervision", ref:16, refT:"Machine Teaching for Modular Agents (2024)" },
+    { id:"aitl", fam:"ref", t:["post"], name:"Data flywheel (AITL)",
+      mech:"Four annotation signals embedded directly into live customer operations feed retraining.",
+      benefit:"Compressed retraining cycles and lifted quality (+8.4% helpfulness, +4.5% adoption).", stat:"months → weeks", statCap:"retraining cycle time", ref:1, refT:"Agent-in-the-Loop (2025)" },
+    { id:"aria", fam:"ref", t:["runtime"], name:"Test-time learning (ARIA)",
+      mech:"Streaming, clause-level human feedback is incorporated during inference.",
+      benefit:"The agent self-improves at test time — turning each interaction into a learning signal, no fine-tuning cycle.", ref:17, refT:"Self-improving agents at test time (2025)" },
+
+    { id:"debate", fam:"co", t:["runtime"], name:"HITL multi-agent debate",
+      mech:"Human opinion is inserted into an ongoing LLM-agent debate.",
+      benefit:"Across 2,700 legal-reasoning steps, LLMs weighted human input above peer-AI opinion.", stat:"human > peer-AI", statCap:"how much LLMs weight the input", ref:18, refT:"Tipping the Balance (Triem & Ding, 2024)" },
+    { id:"collabtool", fam:"co", t:["runtime"], name:"Expert-in-the-loop (CollabToolBuilder)",
+      mech:"Four specialized agents — Coach, Coder, Critic, Capitalizer — updated by a reinforced dynamic prompt from human feedback.",
+      benefit:"Fast, human-validated tool building toward human-defined goals.", ref:19, refT:"Multi-Agent LLM-Human Framework (2025)" },
+    { id:"report", fam:"co", t:["runtime"], name:"Report-generation feedback loops",
+      mech:"Human feedback loops span the retrieval and synthesis stages of a multi-agent pipeline.",
+      benefit:"Aligns generated reports with organizational requirements.", ref:20, refT:"Multi-Agent Report Generation Pipeline" },
+    { id:"adaptbot", fam:"co", t:["design","runtime"], name:"KG-augmented HITL (AdaptBot)",
+      mech:"Humans provide corrections that refine a knowledge graph rather than retraining the LLM.",
+      benefit:"Substantial gains on cooking and cleaning simulation tasks from solicited human input.", ref:21, refT:"AdaptBot (Singh et al., 2025)" },
+    { id:"structsense", fam:"co", t:["runtime"], name:"Self-eval + HITL validation (StructSense)",
+      mech:"Agent-internal judge modules refine output; a human layer validates low-confidence or domain-sensitive extractions.",
+      benefit:"Combines automated and human quality assurance.", ref:23, refT:"StructSense (Chhetri et al., 2025)" }
+  ];
+
+  var byId = {}; DATA.forEach(function (d) { byId[d.id] = d; });
+
+  var selectedFams = {};   // fam -> true
+  var selectedId = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var chipEls = [];        // {el, d}
+
+  // ---- build the board once ----
+  ["design","runtime","post"].forEach(function (t) {
+    var col = $("col-" + t);
+    DATA.forEach(function (d) {
+      if (d.t.indexOf(t) === -1) return;
+      var b = document.createElement("button");
+      b.className = "chip";
+      b.setAttribute("data-fam", d.fam);
+      b.setAttribute("data-id", d.id);
+      b.innerHTML = '<span class="cname">' + d.name + '</span>' +
+        (d.stat ? '<span class="cstat">' + d.stat + '</span>' : '');
+      b.addEventListener("click", function () { select(d.id); });
+      col.appendChild(b);
+      chipEls.push({ el: b, d: d });
+    });
+  });
+
+  function anyFam() { for (var k in selectedFams) if (selectedFams[k]) return true; return false; }
+
+  function applyFilter() {
+    var on = anyFam();
+    var seen = {};
+    chipEls.forEach(function (c) {
+      var show = !on || selectedFams[c.d.fam];
+      c.el.classList.toggle("dim", !show);
+      if (show) seen[c.d.id] = true;
+    });
+    // per-column visible counts
+    var counts = { design:0, runtime:0, post:0 };
+    chipEls.forEach(function (c) {
+      if (!on || selectedFams[c.d.fam]) {
+        c.d.t.forEach(function (t) { counts[t]++; });
+      }
+    });
+    $("n-design").textContent = counts.design;
+    $("n-runtime").textContent = counts.runtime;
+    $("n-post").textContent = counts.post;
+    var total = Object.keys(seen).length;
+    $("fcount").innerHTML = "<b>" + total + "</b> " + (total === 1 ? "strategy" : "strategies") + " shown";
+  }
+
+  function select(id) {
+    selectedId = id;
+    chipEls.forEach(function (c) { c.el.classList.toggle("sel", c.d.id === id); });
+    document.querySelectorAll(".marker button").forEach(function (m) {
+      m.classList.toggle("sel", m.getAttribute("data-id") === id);
+    });
+    renderDetail();
+  }
+
+  function renderDetail() {
+    var el = $("detail");
+    if (!selectedId) {
+      el.classList.add("d-empty");
+      el.innerHTML =
+        '<p class="hint">Select any card — or a point on the spectrum — to see how the strategy works and what the research found.</p>' +
+        '<div class="concept"><h4>In-the-loop vs. on-the-loop</h4><p>In-the-loop needs synchronous human approval before the agent proceeds. On-the-loop lets it run autonomously until a drift signal triggers review.</p></div>' +
+        '<div class="concept"><h4>Instance-level vs. system-level</h4><p>Instance-level feedback fixes a single output. System-level feedback is aggregated to redesign prompts and metrics for the whole pipeline — compounding over time.</p></div>';
+      return;
+    }
+    el.classList.remove("d-empty");
+    var d = byId[selectedId];
+    var fam = FAMS[d.fam];
+    var tags = d.t.map(function (t) { return '<span class="d-tag">' + TIMING_LABEL[t] + '</span>'; }).join("");
+    var statBlock = d.stat
+      ? '<div class="d-stat"><div class="num">' + d.stat + '</div><div class="cap">' + (d.statCap || "") + '</div></div>'
+      : '';
+    el.innerHTML =
+      '<div class="d-fam" style="color:var(--' + d.fam + ')">' + fam.name + '</div>' +
+      '<h2>' + d.name + '</h2>' +
+      '<div class="d-tags">' + tags + '</div>' +
+      statBlock +
+      '<div class="d-block"><span class="lab">Mechanism</span><p>' + d.mech + '</p></div>' +
+      '<div class="d-block"><span class="lab">Why it helps</span><p>' + d.benefit + '</p></div>' +
+      '<div class="d-ref"><b>Source [' + d.ref + ']</b> · ' + d.refT + '</div>';
+  }
+
+  // ---- filters ----
+  document.querySelectorAll(".fchip").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var fam = btn.getAttribute("data-fam");
+      selectedFams[fam] = !selectedFams[fam];
+      btn.classList.toggle("active", !!selectedFams[fam]);
+      applyFilter();
+    });
+  });
+
+  // ---- spectrum markers ----
+  document.querySelectorAll(".marker button").forEach(function (m) {
+    m.addEventListener("click", function () { select(m.getAttribute("data-id")); });
+  });
+
+  // ---- theme ----
+  $("themeBtn").addEventListener("click", function () {
+    var root = document.documentElement;
+    var isDark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    root.setAttribute("data-theme", isDark ? "light" : "dark");
+  });
+
+  // ---- footer references ----
+  $("footer").innerHTML = "An explorable of 23 human-in-the-loop strategies for LLM agents, drawn from the attached survey and its 23 cited sources. Self-contained — nothing loaded from the network. Evidence figures and paper names are reproduced from the source document.";
+
+  applyFilter();
+  renderDetail();
+})();
+</script>
+</body>
+</html>
