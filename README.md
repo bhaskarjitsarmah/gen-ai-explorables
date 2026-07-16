@@ -10,5 +10,6 @@ Interactive, self-contained explainers for generative-AI concepts. Each **explor
 | 02 | [How Claude Code works: the agentic loop](./02-agentic-loop/) | Process | Play / step / scrub timeline |
 | 03 | [The mixing dial: how much domain data?](./03-data-mixing/) | Trade-off | Draggable simulator with live curves |
 | 04 | [Under the hood of Claude Code](./04-under-the-hood-of-claude-code/) | Architecture | Inspect / compact / run the real query loop |
+| 05 | [The files you own in Claude Code](./05-the-files-you-own/) | Authoring surface | Walk a real project tree, re-sort by lens, probe a request |
 
 Each page supports light/dark themes, keyboard focus, and reduced-motion. Built by [Bhaskarjit Sarmah](https://bhaskarjitsarmah.github.io).
