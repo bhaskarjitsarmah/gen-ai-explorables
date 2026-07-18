@@ -65,6 +65,14 @@
   .theme-btn { flex:0 0 auto; font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--ink-dim); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; transition:color .15s, border-color .15s, background .15s; }
   .theme-btn:hover { color:var(--ink); border-color:var(--ink-faint); }
 
+  /* The loop, annotated — full width, above the interactive */
+  .loopcard { margin-top:30px; }
+  .loopcard-cap { font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint); margin:0 2px 9px; }
+  .loopcode { margin:0; background:var(--code-bg); border:1px solid var(--code-line); border-radius:12px; padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:13px; line-height:1.75; color:var(--code-ink); white-space:pre; box-shadow:var(--shadow); }
+  .loopcode .kw { color:#e8a45c; }
+  .loopcode .fn { color:#74c4c0; }
+  .loopcode .cm { color:var(--code-dim); }
+
   /* Layout */
   .stage { margin-top:40px; display:grid; grid-template-columns:minmax(0,360px) 1fr; gap:26px; align-items:start; }
   @media (max-width:860px) { .stage { grid-template-columns:1fr; } }
@@ -236,6 +244,17 @@
     <button class="theme-btn" id="themeBtn" aria-label="Toggle color theme">◐ theme</button>
   </header>
 
+  <section class="loopcard">
+    <div class="loopcard-cap">the whole thing, in one glance · every stage below is just detail on one of these lines</div>
+    <pre class="loopcode"><span class="kw">while</span> (true) {
+  msgs = <span class="fn">assemble</span>();          <span class="cm">// gather context since the last compaction boundary</span>
+  msgs = <span class="fn">shape</span>();             <span class="cm">// run the five compaction layers to fit the window</span>
+  res  = <span class="fn">callModel</span>(msgs);     <span class="cm">// stream the model's response</span>
+  <span class="kw">if</span> (<span class="fn">noToolUse</span>(res)) <span class="kw">break</span>;  <span class="cm">// model returned only text → stop</span>
+  <span class="fn">execute</span>(<span class="fn">authorize</span>(res));    <span class="cm">// gate, then run the tool calls</span>
+}                             <span class="cm">// append tool_result, loop again</span></pre>
+  </section>
+
   <div class="stage">
     <!-- Pipeline -->
     <section class="panel pipe">
@@ -243,7 +262,6 @@
       <p class="pipe-note">The 9-step pipeline in <span class="mono-inline">query.ts</span>, grouped into six stages. Click any stage.</p>
       <div id="pipe"></div>
       <div class="loopback">⟲&nbsp; append tool_result → loop, until the model returns text with no tool calls</div>
-      <div class="whileloop"><span class="k">while</span> (true) {<br>&nbsp;&nbsp;msgs = <span class="c">assemble()</span>; msgs = <span class="c">shape()</span>;<br>&nbsp;&nbsp;res&nbsp; = <span class="c">callModel(</span>msgs<span class="c">)</span>;<br>&nbsp;&nbsp;<span class="k">if</span> (<span class="c">noToolUse(</span>res<span class="c">)</span>) <span class="k">break</span>;<br>&nbsp;&nbsp;<span class="c">execute(</span>authorize(res)<span class="c">)</span>;<br>}</div>
     </section>
 
     <!-- Detail -->
